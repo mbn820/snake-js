@@ -28,6 +28,7 @@
     }
 
     .cell {
+      content: "";
       min-width: 20px;
       min-height: 20px;
     }
@@ -256,6 +257,7 @@
       }
   
       function drawBoardCells() {
+        boardDiv.innerHTML = '';
         for (var row = 0; row <= rowSize -1; row++) {
           var rowDiv = document.createElement('DIV');
           rowDiv.classList = ['row'];
@@ -273,21 +275,23 @@
       }
 
       function redrawBoardCells() {
-        boardDiv.innerHTML = '';
-        drawBoardCells();
+        boardDiv.querySelectorAll('.cell').forEach(cell => {
+          cell.innerHTML = '';
+          cell.classList = ['cell'];
+        });
       }
 
       function drawFood() {
         foods.forEach(food => {
           var boardCell = getBoardCell(food);
-          boardCell.classList = ['food'];
+          boardCell.classList.add('food');
         });
       }
 
       function drawSuperFoods() {
         superFoods.forEach(superFood => {
           var boardCell = getBoardCell(superFood);
-          boardCell.classList = ['super-food'];
+          boardCell.classList.add('super-food');
           boardCell.innerHTML = '<div>' + superFoodsCountdown + '</div>';
         });
       }
@@ -295,14 +299,14 @@
       function drawWalls() {
         currentWalls.forEach(wall => {
           var boardCell = getBoardCell(wall);
-          boardCell.classList = ['wall'];
+          boardCell.classList.add('wall');
         });
       }
   
       function drawSnake() {
         snakeBody.forEach(snakeCell => {
           var boardCell = getBoardCell(snakeCell);
-          boardCell.classList = ['snake-body'];
+          boardCell.classList.add('snake-body');
         });
       }
 

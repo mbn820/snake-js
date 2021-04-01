@@ -217,8 +217,11 @@
       }
 
       function init() {
+        clearInterval(gameInterval);
+        clearInterval(superFoodsInterval);
         snakeBody = [133, 134, 135];
         currentDirection = 'LEFT';
+        score = 0;
         resetSuperFoodCountdown();
       }
 

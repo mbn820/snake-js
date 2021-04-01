@@ -1,0 +1,413 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Snake</title>
+  <meta name="description" content="Snake">
+  <meta name="author" content="mnunez">
+  <link rel="stylesheet" href="css/styles.css?v=1.0">
+  <style>
+    body {
+      background-color: bisque;
+    }
+
+    .flex {
+      display: flex;
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+    }
+
+    #board {
+      border-color: black;
+      border-style: dashed;
+      display: inline-block;
+    }
+
+    .cell {
+      min-width: 30px;
+      min-height: 30px;
+    }
+
+    .row {
+      display: flex;
+    }
+
+    .snake-body {
+      background-color: darkgreen;
+      min-width: 30px;
+      min-height: 30px;
+      border-radius: 10px
+    }
+
+    .food {
+      background: red;
+      width: 30px;
+      height: 30px;
+      position: relative;
+      text-align: center;
+      transform: rotate(20deg);
+    }
+
+    .food:before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 30px;
+      width: 30px;
+      background: red;
+      transform: rotate(135deg);
+    }
+
+    .super-food {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: black;
+      background: yellow;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      text-align: center;
+    }
+
+    .wall {
+      background-color: black;
+      min-width: 30px;
+      min-height: 30px;
+    }
+  </style>
+</head>
+<body onload="onload()">
+  <div>
+    <div class="container">
+      <div id="info" class="flex">
+        <h2>Score:</h2><h2 id="score-value"></h2>
+      </div>
+    </div>
+    <div class="container">
+      <div id="board">
+      </div>
+    </div>
+  </div>
+
+  <script>
+      var opposite = {
+        'UP': 'DOWN',
+        'DOWN': 'UP',
+        'LEFT': 'RIGHT',
+        'RIGHT': 'LEFT'
+      };
+
+      var boardDiv = document.getElementById('board');
+      var rowSize = 20;
+      var colSize = 50;
+      var speed = 100;
+
+      var snakeBody = [133, 134, 135];
+      var currentDirection = 'LEFT';
+
+      var score = 0;
+      var turn = 0;
+      var foods = [];
+      var superFoods = [];
+      var currentWalls = [];
+      var walls = {
+        1: [],
+        2: [1,2,3,4,5,6,7,8,9,10,20,21,22,23,24,25,26,27,28,29,30,31,40,41,42,43,44,45,46,47,48,49,50,
+            51,101,151,201,251,701,751,801,851,901,951,
+            100,150,200,250,300,750,800,850,900,950,1000,
+            952,953,954,955,956,957,958,959,960,970,971,972,973,974,975,976,977,978,979,980,981,990,991,992,993,994,995,996,997,998,999,
+            362,363,364,365,366,367,368,369,370,371,372,373,374,375,376,377,378,379,380,381,382,383,384,385,386,387,388,
+            612,613,614,615,616,617,618,619,620,621,622,623,624,625,626,627,628,629,630,631,632,633,634,635,636,637,638],
+        3: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,
+            51,101,151,201,251,301,351,401,451,501,551,601,651,701,751,801,851,901,951,
+            100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000,
+            952,953,954,955,956,957,958,959,960,961,962,963,964,965,966,967,968,969,970,971,972,973,974,975,976,977,978,979,980,981,982,983,984,985,986,987,988,989,990,991,992,993,994,995,996,997,998,999]
+      };
+
+      var isGameOver = false;
+      var gameInterval;
+      var superFoodsCountdown = 10;
+      var superFoodsInterval;
+
+      document.onkeydown = function(evt) {
+        evt = evt || window.event;
+        console.log(evt.code);
+        switch(evt.code) {
+          case 'ArrowUp':
+          case 'KeyW': moveSnakeThenDrawIfPossible('UP'); break;
+          case 'ArrowLeft':
+          case 'KeyA': moveSnakeThenDrawIfPossible('LEFT'); break;
+          case 'ArrowDown':
+          case 'KeyS': moveSnakeThenDrawIfPossible('DOWN'); break;
+          case 'ArrowRight':
+          case 'KeyD': moveSnakeThenDrawIfPossible('RIGHT'); break;
+        }
+      }
+
+      function getSnakeHead() {
+        return snakeBody[0];
+      }
+
+      function getSnakeTail() {
+        return snakeBody[snakeBody.length - 1];
+      }
+
+      function getSnakeSubtail() {
+        return snakeBody[snakeBody.length - 2];
+      }
+
+      function isSnakeBodyLocation(coordinate) {
+        return snakeBody.includes(coordinate);
+      }
+
+      function isWallLocation(coordinate) {
+        return currentWalls.includes(coordinate);
+      }
+
+      function hasHitFood() {
+        return foods.includes(getSnakeHead());
+      }
+
+      function hasHitSuperFoods() {
+        return superFoods.includes(getSnakeHead());
+      }
+
+      function hasHitWall() {
+        return currentWalls.includes(getSnakeHead());
+      }
+
+      function hasHitSelf() {
+        return new Set(snakeBody).size !== snakeBody.length;
+      }
+
+      function isSameDirection(direction) {
+        return direction === currentDirection;
+      }
+
+      function canMove(direction) {
+        return !(opposite[direction] === currentDirection);
+      }
+
+      function resetSuperFoodCountdown() {
+        superFoodsCountdown = 10;
+      }
+
+      function onload() {
+        drawBoardCells(board, rowSize, colSize);
+        initWalls(3);
+        drawWalls();
+        drawSnake();
+        drawScore();
+
+        spawnFood();
+        drawFood();
+
+        spawnSuperFoods();
+        drawSuperFoods();
+
+        gameInterval = setInterval(() => {
+          moveSnakeThenDraw(currentDirection);
+        }, speed);
+      }
+
+      function spawnFood() {
+        var foodLocation;
+        do {
+          foodLocation = Math.floor(Math.random() * (rowSize * colSize));
+        } while (isSnakeBodyLocation(foodLocation) || isWallLocation(foodLocation)); // avoid spawning on snake or wall location
+
+        foods = [foodLocation];
+      }
+
+      function spawnSuperFoods() {
+        var superFoodsLocation;
+        do {
+          superFoodsLocation = Math.floor(Math.random() * (rowSize * colSize));
+        } while (isSnakeBodyLocation(superFoodsLocation) || isWallLocation(superFoodsLocation)); // avoid spawning on snake or wall location
+        superFoods = [superFoodsLocation];
+
+        superFoodsInterval = setInterval(() => {
+          superFoodsCountdown--;
+          if (superFoodsCountdown < 1) {
+            superFoods = [];
+            clearInterval(superFoodsInterval);
+            resetSuperFoodCountdown();
+          }
+        }, 1000);
+      }
+
+      function initWalls(level) {
+        currentWalls = walls[level];
+      }
+  
+      function drawBoardCells() {
+        for (var row = 0; row <= rowSize -1; row++) {
+          var rowDiv = document.createElement('DIV');
+          rowDiv.classList = ['row'];
+          for (var col = 0; col <= colSize - 1; col++) {
+            var count = (row * colSize) + (col + 1);
+  
+            var cell = document.createElement('DIV');
+            // cell.innerHTML = 'Cell-' + count;
+            cell.id = 'cell-' + count;
+            cell.classList = ['cell'];
+            rowDiv.appendChild(cell);
+          }
+          boardDiv.appendChild(rowDiv);
+        }
+      }
+
+      function redrawBoardCells() {
+        boardDiv.innerHTML = '';
+        drawBoardCells();
+      }
+
+      function drawFood() {
+        foods.forEach(food => {
+          var boardCell = getBoardCell(food);
+          boardCell.classList = ['food'];
+        });
+      }
+
+      function drawSuperFoods() {
+        superFoods.forEach(superFood => {
+          var boardCell = getBoardCell(superFood);
+          boardCell.classList = ['super-food'];
+          boardCell.innerHTML = '<div>' + superFoodsCountdown + '</div>';
+        });
+      }
+
+      function drawWalls() {
+        currentWalls.forEach(wall => {
+          var boardCell = getBoardCell(wall);
+          boardCell.classList = ['wall'];
+        });
+      }
+  
+      function drawSnake() {
+        snakeBody.forEach(snakeCell => {
+          var boardCell = getBoardCell(snakeCell);
+          boardCell.classList = ['snake-body'];
+        });
+      }
+
+      function drawScore() {
+        var scoreElem = document.getElementById('score-value');
+        scoreElem.innerHTML = score;
+      }
+  
+      function getBoardCell(cellNum) {
+        return document.getElementById('cell-' + cellNum);
+      }
+
+      function setDirection(direction) {
+        currentDirection = direction;
+      }
+  
+      function moveSnake() {
+        var newHead = calculateNewHead();
+        snakeBody.unshift(newHead);
+        snakeBody.pop();
+
+        if (hasHitSelf() || hasHitWall()) {
+          clearInterval(gameInterval);
+          isGameOver = true;
+          alert('Game Over!');
+          return;
+        }
+
+        if (hasHitFood()) {
+          score++;
+          spawnFood();
+          growSnake();
+          if (++turn % 5 === 0) {
+            spawnSuperFoods();
+          }
+        }
+
+        if (hasHitSuperFoods()) {
+          score += 5;
+          superFoods = [];
+          resetSuperFoodCountdown();
+          clearInterval(superFoodsInterval);
+        }
+      }
+
+      function calculateNewHead() {
+        var numberOfBoardCells = rowSize * colSize;
+        var currentHead = getSnakeHead();
+        var newHead;
+        
+        switch (currentDirection) {
+          case 'UP': 
+            var cell = currentHead - colSize;
+            if (cell < 1) {
+              newHead = numberOfBoardCells + cell;
+            } else {
+              newHead = cell;
+            }
+            break;
+          case 'DOWN':
+            var cell = currentHead + colSize;
+            if (cell > numberOfBoardCells) {
+              newHead = cell - numberOfBoardCells;
+            } else {
+              newHead = cell;
+            }
+            break;
+          case 'LEFT':
+            if (currentHead % colSize === 1) {
+              newHead = currentHead + colSize - 1;
+            } else {
+              newHead = currentHead - 1;
+            }
+            break;
+          case 'RIGHT': 
+            if (currentHead % colSize === 0) {
+              newHead = currentHead - colSize + 1;
+            } else {
+              newHead = currentHead + 1;
+            }
+            break;
+        }
+
+        return newHead;
+      }
+
+      function growSnake() {
+        var tail = getSnakeTail();
+        var subtail = getSnakeSubtail();
+        var newTail = tail - subtail + tail;
+
+        snakeBody.push(newTail);
+      }
+
+      function moveSnakeThenDraw(direction) {
+        currentDirection = direction;
+        moveSnake();
+        redrawBoardCells();
+        drawWalls()
+        drawFood();
+        drawSuperFoods();
+        drawSnake();
+        drawScore();
+      }
+
+      function moveSnakeThenDrawIfPossible(direction) {
+        if (isSameDirection(direction)) {
+          return;
+        }
+        if (!canMove(direction)) {
+          return;
+        }
+        moveSnakeThenDraw(direction);
+      }
+    </script>
+</body>
+</html>
